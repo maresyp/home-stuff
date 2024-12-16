@@ -1,0 +1,70 @@
+services:
+  gluetun:
+    image: qmcgaw/gluetun
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    ports:
+      - 8080:8080 # qbittorrent web interface
+      - 6881:6881 # qbittorrent torrent port
+    environment:
+      - VPN_SERVICE_PROVIDER=protonvpn
+      - VPN_TYPE=wireguard
+      - WIREGUARD_ENDPOINT_IP=${WIREGUARD_ENDPOINT_IP}
+      - WIREGUARD_PUBLIC_KEY=${WIREGUARD_PUBLIC_KEY}
+      - WIREGUARD_PRIVATE_KEY=${WIREGUARD_PRIVATE_KEY}
+      - WIREGUARD_ADDRESSES=${WIREGUARD_ADDRESSES}
+      - VPN_PORT_FORWARDING_PROVIDER=protonvpn
+      - VPN_PORT_FORWARDING=on
+      - PORT_FORWARD_ONLY=on
+    healthcheck:
+      test: ping -c 1 www.google.com || exit 1
+      interval: 60s
+      timeout: 20s
+      retries: 5
+    restart: unless-stopped
+
+  deunhealth:
+    build: .
+    image: qmcgaw/deunhealth
+    container_name: deunhealth
+    network_mode: "none"
+    environment:
+      - LOG_LEVEL=info
+      - HEALTH_SERVER_ADDRESS=127.0.0.1:9999
+      - TZ=Europe/Berlin
+    restart: always
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:amd64-4.6.7-r0-ls353
+    container_name: qbittorrent
+    restart: unless-stopped
+    labels:
+      - deunhealth.restart.on.unhealthy= "true"
+    environment:
+      - TZ=Europe/Berlin
+      - WEBUI_PORT=8080
+      - TORRENTING_PORT=6881
+      # Auto port switch
+      - DOCKER_MODS=ghcr.io/t-anc/gsp-qbittorent-gluetun-sync-port-mod:main
+      - GSP_GTN_API_KEY=${GSP_GTN_API_KEY}
+      - GSP_QBT_USERNAME=admin
+      - GSP_QBT_PASSWORD=${GSP_QBT_PASSWORD}
+      - GSP_SLEEP=120
+      - GSP_MINIMAL_LOGS=false
+    volumes:
+    #   - /docker/qbittorrent:/config
+      - ${DOWNLOADS}:/downloads
+    network_mode: service:gluetun
+    depends_on:
+      gluetun:
+        condition: service_healthy
+    healthcheck:
+        test: ping -c 1 www.google.com || exit 1
+        interval: 60s
+        retries: 3
+        start_period: 20s
+        timeout: 10s
