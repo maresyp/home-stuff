@@ -1,1 +1,1 @@
-# nix-os-config
+# home-stuff
