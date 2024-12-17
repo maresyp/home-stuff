@@ -59,7 +59,7 @@ services:
       - GSP_SLEEP=120
       - GSP_MINIMAL_LOGS=false
     volumes:
-    #   - /docker/qbittorrent:/config
+      - ${QBITTORRENT_CONFIG}:/config/qBittorrent.conf:ro
       - ${DOWNLOADS}:/downloads
     network_mode: service:gluetun
     depends_on:
