@@ -18,6 +18,9 @@ services:
       - VPN_PORT_FORWARDING_PROVIDER=protonvpn
       - VPN_PORT_FORWARDING=on
       - PORT_FORWARD_ONLY=on
+      - UPDATER_PERIOD=24h
+    volumes:
+      - ${GLUETUN_CONFIG}:/gluetun/auth/config.toml:ro
     healthcheck:
       test: ping -c 1 www.google.com || exit 1
       interval: 60s
