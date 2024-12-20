@@ -8,6 +8,12 @@ services:
     ports:
       - 8080:8080 # qbittorrent web interface
       - 6881:6881 # qbittorrent torrent port
+      - 9696:9696 # prowlarr
+      - 8989:8989 # sonarr
+      - 7878:7878 # radarr
+      - 6767:6767 # bazarr
+      - 8191:8191 # flaresolverr
+      - 5055:5055 # jellyseerr
     environment:
       - VPN_SERVICE_PROVIDER=protonvpn
       - VPN_TYPE=wireguard
@@ -61,7 +67,7 @@ services:
       - GSP_MINIMAL_LOGS=false
     volumes:
       - ${QBITTORRENT_CONFIG}:/config/qBittorrent.conf:ro
-      - ${DOWNLOADS}:/qbittorrent:rw
+      - ${DOWNLOADS}:/data:rw
     network_mode: service:gluetun
     depends_on:
       gluetun:
@@ -72,3 +78,123 @@ services:
         retries: 3
         start_period: 20s
         timeout: 10s
+
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr:latest
+    container_name: prowlarr
+    network_mode: service:gluetun
+    environment:
+      # - PUID=1000
+      # - PGID=1000
+      - TZ=Europe/Berlin
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ./docker/prowlarr:/config
+    restart: unless-stopped
+    depends_on:
+      gluetun:
+        condition: service_healthy
+      qbittorrent:
+        condition: service_healthy
+
+  flaresolverr:
+    image: ghcr.io/flaresolverr/flaresolverr:latest
+    container_name: flaresolverr
+    network_mode: service:gluetun
+    environment:
+      - LOG_LEVEL=info
+      - LOG_HTML=false
+      - CAPTCHA_SOLVER=none
+      - TZ=Europe/Berlin
+    restart: unless-stopped
+    depends_on:
+      gluetun:
+        condition: service_healthy
+      qbittorrent:
+        condition: service_healthy
+
+  sonarr:
+    image: lscr.io/linuxserver/sonarr:latest
+    container_name: sonarr
+    restart: unless-stopped
+    network_mode: service:gluetun
+    environment:
+      # - PUID=1000
+      # - PGID=1000
+      - TZ=Europe/Berlin
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ./docker/sonarr:/config
+      - ${DOWNLOADS}:/data
+    depends_on:
+      gluetun:
+        condition: service_healthy
+      qbittorrent:
+        condition: service_healthy
+
+  radarr:
+    image: lscr.io/linuxserver/radarr:latest
+    container_name: radarr
+    restart: unless-stopped
+    network_mode: service:gluetun
+    environment:
+      # - PUID=1000
+      # - PGID=100
+      - TZ=Europe/Berlin
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ./docker/radarr:/config
+      - ${DOWNLOADS}:/data
+    depends_on:
+      gluetun:
+        condition: service_healthy
+      qbittorrent:
+        condition: service_healthy
+
+  bazarr:
+    image: lscr.io/linuxserver/bazarr:latest
+    container_name: bazarr
+    restart: unless-stopped
+    network_mode: service:gluetun
+    environment:
+      # - PUID=1000
+      # - PGID=1000
+      - TZ=Europe/Berlin
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ./docker/bazarr:/config
+      - ${DOWNLOADS}:/data
+    depends_on:
+      gluetun:
+        condition: service_healthy
+
+  # jellyfin:
+  #   container_name: jellyfin
+  #   image: jellyfin/jellyfin
+  #   environment:
+  #     - PUID=1000
+  #     - PGID=1000
+  #     - TZ=America/Los_Angeles
+  #   # volumes:
+  #   #   - /docker/jellyfin:/config
+  #   #   - /data:/data
+  #   ports:
+  #     - 8096:8096
+  #   # devices:
+  #   #  - /dev/dri:/dev/dri # QuickSync
+  #   restart: unless-stopped
+
+  # jellyseerr:
+  #   container_name: jellyseerr
+  #   image: fallenbagel/jellyseerr:latest
+  #   network_mode: service:gluetun
+  #   environment:
+  #     # - PUID=1000
+  #     # - PGID=1000
+  #     - TZ=Europe/Berlin
+  #   # volumes:
+  #   #   - /docker/jellyseerr:/app/config
+  #   restart: unless-stopped
+  #   depends_on:
+  #     gluetun:
+  #       condition: service_healthy
